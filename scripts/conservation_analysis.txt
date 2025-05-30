@@ -1,0 +1,71 @@
+
+
+#pairwise alignment by Anchorwave
+conda install -c bioconda -c conda-forge anchorwave
+
+conda activate anchorwave
+
+anchorwave gff2seq -r Morex.fa -i Hv_Morex.gff3 -o Morex_cds.fa
+
+minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Morex.fa Morex_cds.fa > Morex_ref.sam
+minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Atauschii.fa Morex_cds.fa > Atauschii_cds.sam
+minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Bdistachyon.fa Morex_cds.fa > Bdistachyon_cds.sam
+minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Scereale.fa Morex_cds.fa > Scereale_cds.sam
+minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Turartu.fa Morex_cds.fa > Turartu_cds.sam
+
+anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Atauschii_cds.sam -ar Morex_ref.sam -s Atauschii.fa -n anchors -R 1 -Q 1 -o Morex_Atauschii_alignment.maf -f Morex_Atauschii_alignment.f.maf -t 25 -y 0.4 -e 5
+anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Bdistachyon_cds.sam -ar Morex_ref.sam -s Bdistachyon.fa -n anchors -R 1 -Q 1 -o Morex_Bdistachyon_alignment.maf -f Morex_Bdistachyon_alignment.f.maf -t 25 -y 0.4 -e 5
+anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Scereale_cds.sam -ar Morex_ref.sam -s Scereale.fa -n anchors -R 1 -Q 1 -o Morex_Scereale_alignment.maf -f Morex_Scereale_alignment.f.maf -t 25 -y 0.4 -e 5
+anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Turartu_cds.sam -ar Morex_ref.sam -s Turartu.fa -n anchors -R 1 -Q 1 -o Morex_Turartu_alignment.maf -f Morex_Turartu_alignment.f.maf -t 25 -y 0.4 -e 5
+
+
+
+#Splitting and sorting of pairwise alignment
+#mafSplit #splitting the pair alignment into reference individual chromosomes (bioconda package ucsc-mafsplit)
+#mafSort # sorting by positionin (tool in Maftools - bioconda package maftools) 
+
+#Chaining and netting pipeline
+#mafToAxt, axtChain, chainNet, netToAxt and axtToMaf #default settings (bioconda packages: ucsc-maftoaxt ucsc-axtchain, ucsc-chainnet, ucsc-nettoaxt, axttomaf)
+
+
+
+#multiple alignment of paired alignments aligned to a single reference chromosome (for each reference chromosome)
+conda create -n multiz
+conda install bioconda::multiz
+conda activata multiz
+
+roast + T=/path/to/tmp E=Hordeum_vulgare_MorexV3 "(Brachypodium_distachyon ((Triticum_urartu Aegilops_tauschii) Secale_cereale) Hordeum_vulgare_MorexV3)" *.maf SP5_chr1H_Morex.roast.maf
+
+####################################
+
+#PhatsCons pipeline
+#installation
+conda install -c bioconda -c conda-forge phast
+conda activate phast
+
+#estimation of the phylogenetic model
+#1) PHAST utility msa_view can be used to extract 4d sites from an alignment.
+msa_view SP5_chr1H_Morex.roast.maf --4d --features MOREX_CDS_chr1H.gff3 > 4d-codons_chr1H.ss
+
+#2) This will create a representation in the "sufficient statistics" (SS) format of whole codons containing 4d sites
+msa_view 4d-codons_chr1H.ss --in-format SS --out-format SS --tuple-size 1 > 4d-codons_chr1H.ss
+
+#3) A nonconserved phylogenetic model can now be estimated using phyloFit.
+phyloFit --tree "((Brachypodium_distachyon:0.1210776,((Triticum_urartu:0.0120651,Aegilops_tauschii:0.0117618)1:0.0062476,Secale_cereale:0.0163157)1:0.00805776)1:0,Hordeum_vulgare_MorexV3:0.022219)root;" \
+          --msa-format SS \
+          --out-root nonconserved-4d \
+          4d-sites_chr1H.ss
+
+#To obtain the neutral (noncons.mod) and conserved models (cons.mod) for PhastCons, the phyloFit program was used, where individual parameters were tuned until the percentage of conserved elements in the aligned CDS regions was near 65 % and PIT 10 (up to 10 rounds), according to the manual (http://compgen.cshl.edu/phast/phastCons-HOWTO.html)
+
+
+#estimation of PhastCons score
+phastCons --target-coverage 0.33 --expected-length 19 SP5_chr1H_Morex.roast.maf cons.mod,noncons.mod > PhastCons_scores_chr1H.wig
+
+cat PhastCons_scores_chr1H.wig PhastCons_scores_chr2H.wig PhastCons_scores_chr3H.wig PhastCons_scores_chr4H.wig PhastCons_scores_chr5H.wig PhastCons_scores_chr6H.wig PhastCons_scores_chr7H.wig > PhastCons_scores_WG.wig
+
+#convert wig to bigwig 
+wigToBigWig PhastCons_scores_WG.wig Morex_chrom.sizes PhastCons_SP5_WG.bigwig
+
+
+
