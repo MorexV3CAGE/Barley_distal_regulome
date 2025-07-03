@@ -1,27 +1,30 @@
+#pairwise alignment by nf-core/pairgenomealign pipeline
+#Preparation of Nextflow Environment
+mamba create -n nextflow_env -c bioconda -c conda-forge nextflow
+mamba activate nextflow_env
+
+#adding nf-core/pairgenomealign
+nextflow pull nf-core/pairgenomealign
+
+#example of nf-core/pairgenomealign run
+nextflow run nf-core/pairgenomealign \
+   -profile singularity \
+   -w /path/to/your/workdir \
+   --target /path/to/your/reference/reference.fa \#Each reference chromosome was processed in a separate run
+   --input /path/to/your/samplesheet.csv \
+   --seed YASS \
+   --outdir /path/to/your/outdir
+
+#samplesheet.csv contains the name and path to your query genome
+#example:
+#query_1,/path/to/your/querry/query1.fa
 
 
-#pairwise alignment by Anchorwave
-conda install -c bioconda -c conda-forge anchorwave
 
-conda activate anchorwave
+###########################################
 
-anchorwave gff2seq -r Morex.fa -i Hv_Morex.gff3 -o Morex_cds.fa
-
-minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Morex.fa Morex_cds.fa > Morex_ref.sam
-minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Atauschii.fa Morex_cds.fa > Atauschii_cds.sam
-minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Bdistachyon.fa Morex_cds.fa > Bdistachyon_cds.sam
-minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Scereale.fa Morex_cds.fa > Scereale_cds.sam
-minimap2 -x splice -t 20 -k 12 -a -p 0.4 -N 20 Turartu.fa Morex_cds.fa > Turartu_cds.sam
-
-anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Atauschii_cds.sam -ar Morex_ref.sam -s Atauschii.fa -n anchors -R 1 -Q 1 -o Morex_Atauschii_alignment.maf -f Morex_Atauschii_alignment.f.maf -t 25 -y 0.4 -e 5
-anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Bdistachyon_cds.sam -ar Morex_ref.sam -s Bdistachyon.fa -n anchors -R 1 -Q 1 -o Morex_Bdistachyon_alignment.maf -f Morex_Bdistachyon_alignment.f.maf -t 25 -y 0.4 -e 5
-anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Scereale_cds.sam -ar Morex_ref.sam -s Scereale.fa -n anchors -R 1 -Q 1 -o Morex_Scereale_alignment.maf -f Morex_Scereale_alignment.f.maf -t 25 -y 0.4 -e 5
-anchorwave proali -i Hv_Morex.gff3 -as Morex_cds.fa -r Morex.fa -a Turartu_cds.sam -ar Morex_ref.sam -s Turartu.fa -n anchors -R 1 -Q 1 -o Morex_Turartu_alignment.maf -f Morex_Turartu_alignment.f.maf -t 25 -y 0.4 -e 5
-
-
-
-#Splitting and sorting of pairwise alignment
-#mafSplit #splitting the pair alignment into reference individual chromosomes (bioconda package ucsc-mafsplit)
+#Processing of genome pairwise alignments
+#Sorting of pairwise alignment
 #mafSort # sorting by positionin (tool in Maftools - bioconda package maftools) 
 
 #Chaining and netting pipeline
